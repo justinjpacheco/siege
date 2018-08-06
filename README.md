@@ -27,7 +27,7 @@ username | your name during the game
 
 #### response
 
-status: 201 Created
+Status: 201 Created
 
 ```json
 {

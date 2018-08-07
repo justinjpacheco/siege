@@ -1,6 +1,9 @@
 # vim swap files
 *.swp
 
+# application state
+data
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

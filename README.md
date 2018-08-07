@@ -30,7 +30,8 @@ Status: 201 Created
 
 ```json
 {
-  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
+  "username": "foobar"
 }
 ```
 

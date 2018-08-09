@@ -1,9 +1,9 @@
 version: '2'
 services:
-  api:
-    build: ./api
+  siege:
+    build: ./siege
     ports:
       - "5000:5000"
     volumes:
-      - './api:/api'
+      - './siege:/siege'
       - './data:/data'

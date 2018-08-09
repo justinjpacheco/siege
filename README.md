@@ -52,7 +52,7 @@ status: 201 Created
 
 {
   "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
   "created_at": "2008-01-14T04:33:00Z",
   "started_at": "",
   "updated_at": "2008-01-14T04:33:00Z",
@@ -89,7 +89,7 @@ status: 200 OK
 
 {
   "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
   "created_at": "2008-01-14T04:33:00Z",
   "started_at": "",
   "updated_at": "2008-01-14T04:34:00Z",
@@ -116,7 +116,7 @@ status: 200 OK
 
 {
   "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
   "created_at": "2008-01-14T04:33:00Z",
   "started_at": "2008-01-14T04:35:00Z",
   "updated_at": "2008-01-14T04:35:00Z",

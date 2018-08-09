@@ -90,19 +90,55 @@ Otherwise:
 
 ### Start
 
+#### Description
+
 Starts a game
 
+#### Request
+
 ```
-POST /game/:game_id/start
+PUT /game/:game_id/start
 ```
 
-#### response
+#### Response
 
-Status: 200 OK
 
-```json
-{
-  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
-}
-```
+<table>
+  <thead>
+    <tr>
+      <th>status</th>
+      <th>condition</th>
+      <th>return</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`200 OK`</td>
+      <td>
+        `successful start of the game`
+      </td>
+      <td>
+        ```json
+        {
+          "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
+          "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+        }
+        ```
+      </td>
+    </tr>
+    <tr>
+      <td>`204 OK`</td>
+      <td>
+        `If the game is aready started`
+      </td>
+      <td>
+        ```json
+        {
+          "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
+          "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811"
+        }
+        ```
+      </td>
+    </tr>
+  </tbody>
+</table>

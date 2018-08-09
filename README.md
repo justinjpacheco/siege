@@ -113,7 +113,7 @@ description: successful start of the game
 ```
 
 ```json
-status: 204 OK
+status: 204 No Content
 description: game has already been started
 
 {

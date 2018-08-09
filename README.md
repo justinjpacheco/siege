@@ -104,5 +104,5 @@ PUT /game/:game_id/start
 
 status | description | return
 ---|---|---
-<nobr>`200 OK`</nobr> | <nobr>`successful start of the game`</nobr> | ```json { "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811", "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811" } ```
+`<nobr>200 OK</nobr>` | `<nobr>successful start of the game</nobr>` | ```json { "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811", "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811" } ```
 <nobr>`204 OK`</nobr> | `game has already been started` | ```json { "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811", "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811" } ```

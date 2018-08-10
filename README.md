@@ -114,15 +114,15 @@ PUT /game/:game_id/start
   "updated_at": "2008-01-14T04:35:00Z",
   "players": [
     {
-      "id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45"
+      "id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
       "armies": {
         "total": 35,
         "unallocated": 35
       },
-      cards: []
+      "cards": []
     },
     {
-      "id": "aff254a6-2124-4362-b6b2-1e97a228bc32"
+      "id": "aff254a6-2124-4362-b6b2-1e97a228bc32",
       "armies": {
         "total": 35,
         "unallocated": 35
@@ -133,7 +133,7 @@ PUT /game/:game_id/start
   "turn": {
     "player": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
     "action": "place army"
-  }
+  },
   "map": "fe261e41-4500-4946-8f1c-9d3d016bee21",
   "card_deck": "52596013-d5b4-4c15-b17c-f600be713e83"
 }
@@ -160,20 +160,20 @@ GET /game/:game_id
   "updated_at": "2008-01-14T04:35:00Z",
   "players": [
     {
-      "id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45"
+      "id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
       "armies": {
         "total": 35,
         "unallocated": 35
       },
-      cards: []
+      "cards": []
     },
     {
-      "id": "aff254a6-2124-4362-b6b2-1e97a228bc32"
+      "id": "aff254a6-2124-4362-b6b2-1e97a228bc32",
       "armies": {
         "total": 35,
         "unallocated": 35
       },
-      cards: []
+      "cards": []
     },
   ],
   "turn": {

@@ -52,7 +52,11 @@ POST /game
   "created_at": "2018-01-14T04:33:00Z",
   "started_at": "",
   "updated_at": "2018-01-14T04:35:00Z",
-  "turn": {},
+  "turn": {
+    order: [],
+    current: null,
+    action: null
+  },
   "map": {
     "url": "/game/:game_id/map"
   },
@@ -193,9 +197,8 @@ GET /game/:game_id/player/:player_id
 ```json
 {
   "user_id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
-  "armies": {
-    "unallocated": 35
-  },
+  "position": null,
+  "armies": {},
   "cards": []
 }
 ```

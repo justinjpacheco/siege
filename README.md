@@ -50,7 +50,8 @@ POST /game
   "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
   "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
   "created_at": "2018-01-14T04:33:00Z",
-  "started_at": "",
+  "started_at": null,
+  "ended_at": null,
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
     "order": [],
@@ -123,6 +124,7 @@ PUT /game/:game_id/start
   "url": "/game/cd8454bc-b080-4ff4-81fb-08ecc66f1811",
   "created_at": "2018-01-14T04:33:00Z",
   "started_at": "2018-01-14T04:34:00Z",
+  "ended_at": null,
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
     "order": [
@@ -165,6 +167,7 @@ GET /game/:game_id
   "url": "/game/cd8454bc-b080-4ff4-81fb-08ecc66f1811",
   "created_at": "2018-01-14T04:33:00Z",
   "started_at": "2018-01-14T04:34:00Z",
+  "ended_at": "2018-01-14T04:35:00Z",
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
     "order": [

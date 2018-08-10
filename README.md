@@ -127,7 +127,7 @@ PUT /game/:game_id/start
         "total": 35,
         "unallocated": 35
       },
-      cards: []
+      "cards": []
     },
   ],
   "turn": {

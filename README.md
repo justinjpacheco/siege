@@ -14,7 +14,7 @@ POST /user
 
 name | description
 ---|---
-username | your name during the game
+username | display name
 
 #### example
 
@@ -80,38 +80,23 @@ PUT /game/:game_id/join
 
 name | description
 ---|---
-id | id of the user to be added to the game
+user_id | user id of the user to be added to the game
 
 #### example
 
 ```json
 {
-  "id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45"
+  "user_id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45"
 }
 ```
 
 #### response
 
-```
+```json
 {
-  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "created_at": "2018-01-14T04:33:00Z",
-  "started_at": "2018-01-14T04:35:00Z",
-  "updated_at": "2018-01-14T04:35:00Z",
-  "turn": {},
-  "map": {
-    "url": "/game/:game_id/map"
-  },
-  "players": {
-    "url": "/game/:game_id/player"
-  },
-  "deck": {
-    "url": "/game/:game_id/deck"
-  },
-  "history": {
-    "url": "/game/:game_id/history"
-  }
+  "user_id": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
+  "armies": {},
+  "cards": []
 }
 ```
 

@@ -53,9 +53,9 @@ POST /game
   "started_at": "",
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
-    order: [],
-    current: null,
-    action: null
+    "order": [],
+    "current": null,
+    "action": null
   },
   "map": {
     "url": "/game/:game_id/map"
@@ -118,14 +118,18 @@ PUT /game/:game_id/start
 
 ```json
 {
-  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
+  "id": "cd8454bc-b080-4ff4-81fb-08ecc66f1811",
+  "url": "/game/cd8454bc-b080-4ff4-81fb-08ecc66f1811",
   "created_at": "2018-01-14T04:33:00Z",
-  "started_at": "2018-01-14T04:35:00Z",
+  "started_at": "2018-01-14T04:34:00Z",
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
-    "player": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
-    "action": "place army"
+    "order": [
+      "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
+      "20a8dcef-2cc1-4d57-b920-73a2ee830c45"
+    ],
+    "current": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
+    "action": "place_army_on_territory"
   },
   "map": {
     "url": "/game/:game_id/map"
@@ -156,14 +160,18 @@ GET /game/:game_id
 
 ```json
 {
-  "id": "CD8454BC-B080-4FF4-81FB-08ECC66F1811",
-  "url": "/game/CD8454BC-B080-4FF4-81FB-08ECC66F1811",
+  "id": "cd8454bc-b080-4ff4-81fb-08ecc66f1811",
+  "url": "/game/cd8454bc-b080-4ff4-81fb-08ecc66f1811",
   "created_at": "2018-01-14T04:33:00Z",
-  "started_at": "2018-01-14T04:35:00Z",
+  "started_at": "2018-01-14T04:34:00Z",
   "updated_at": "2018-01-14T04:35:00Z",
   "turn": {
-    "player": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
-    "action": "place army"
+    "order": [
+      "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
+      "20a8dcef-2cc1-4d57-b920-73a2ee830c45"
+    ],
+    "current": "10a8dcef-2cc1-4d57-b920-73a2ee830c45",
+    "action": "place_army_on_territory"
   },
   "map": {
     "url": "/game/:game_id/map"

@@ -46,5 +46,3 @@ class TestSiegeApi():
 
         assert res.status_code == 201
         assert_valid_schema(json_data,'new-game.json')
-
-        print(json_data)

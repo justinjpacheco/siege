@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "New game response schema",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "created-at": {"type": "string"},
+        "id": {"type": "string", "format": "uuid"},
+        "players": {"type": "array"},
+        "started-at": {"type": "null"}
+      },
+      "required": ["created-at", "id", "players", "started-at"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["data"]
+}

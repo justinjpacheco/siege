@@ -1,5 +1,6 @@
 .eggs
 *.swp
 venv
-data
+db
 __pycache__
+siege.egg-info

@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "New User response schema",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "username": {"type": "string"}
+      },
+      "required": ["id", "username"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["data"]
+}

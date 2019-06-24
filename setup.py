@@ -11,9 +11,9 @@ setup(name='siege',
       test_suite='nose.collector',
       tests_require=['nose'],
       install_requires=[
-        'plyvel',
         'flask',
-        'flask-socketio',
-        'pickledb',
+        'simplekv',
+        'pytest',
+        'jsonschema',
       ],
       zip_safe=False)

@@ -118,9 +118,8 @@ def create_user():
         "password": hashlib.sha512(user_data['password'].encode()).hexdigest()
     }
 
-    users.append(new_user)
-
     # save new user to database
+    users.append(new_user)
     db.put('users',str.encode(json.dumps(users)))
 
     # remove password before returning
@@ -145,7 +144,7 @@ def join(game_id):
     # save game state to database
     db.put(game_id,str.encode(json.dumps(game_data)))
 
-    return jsonify(game_data)
+    return jsonify({'data': game_data})
 
 # start the game
 @app.route('/game/<game_id>/start', methods=['PATCH'])
@@ -158,17 +157,18 @@ def start(game_id):
         response.status_code = 400
         return response
 
-    game_data['started-at'] = datetime.datetime.now().isoformat()
     # save game state to database
+    game_data['started-at'] = datetime.datetime.now().isoformat()
     db.put(game_id,str.encode(json.dumps(game_data)))
 
-    return jsonify(game_data)
+    return jsonify({'data': game_data})
 
 # get game data
 @app.route('/game/<game_id>', methods=['GET'])
+@requires_login
 def game_data(game_id):
     game_data = json.loads(db.get(game_id).decode())
-    return jsonify(game_data)
+    return jsonify({'data': game_data})
 
 # create new game
 @app.route('/game', methods=['POST'])
@@ -179,15 +179,21 @@ def create():
     token = request.headers['Authorization'].split(" ")[1]
     sessions = json.loads(db.get('sessions').decode())
     session = [s for s in sessions if s['token'] == token][0]
-    creator = {'id': session['user-id']}
+    user_id = session['user-id']
+
+    # the creator of the game is the first player added
+    first_player = {'id': session['user-id']}
 
     new_game_id = str(uuid.uuid4())
     new_game = {
         'id': new_game_id,
-        'created-at': datetime.datetime.now().isoformat(),
+        'created-at': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+        'created-by': user_id,
         'started-at': None,
-        'players': [creator]
+        'players': [first_player]
     }
+
+    print(new_game)
 
     # save game state to database
     db.put(new_game_id,str.encode(json.dumps(new_game)))

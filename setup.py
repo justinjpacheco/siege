@@ -15,5 +15,6 @@ setup(name='siege',
         'simplekv',
         'pytest',
         'jsonschema',
+        'strict-rfc3339',
       ],
       zip_safe=False)

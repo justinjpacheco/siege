@@ -1,18 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "create game response schema",
+  "title": "start game response schema",
   "type": "object",
   "properties": {
     "data": {
       "type": "object",
       "properties": {
-        "created-at": {"type": "string", "format": "date-time"},
-        "created-by": {"type": "string", "format": "uuid"},
+        "created-at": {"type": "string"},
         "id": {"type": "string", "format": "uuid"},
         "players": {"type": "array"},
-        "started-at": {"type": "null"}
+        "started-at": {"type": "string"}
       },
-      "required": ["created-at", "created-by", "id", "players", "started-at"]
+      "required": ["created-at", "id", "players", "started-at"]
     }
   },
   "additionalProperties": false,

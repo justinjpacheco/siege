@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "title": "New User response schema",
+  "title": "create user response schema",
   "type": "object",
   "properties": {
     "data": {

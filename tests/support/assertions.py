@@ -1,12 +1,12 @@
 import json
 from os.path import join, dirname
-from jsonschema import validate
+from jsonschema import validate, FormatChecker
 
 def assert_valid_schema(data, schema_file):
     """ Checks whether the given data matches the schema """
 
     schema = _load_json_schema(schema_file)
-    return validate(data, schema)
+    return validate(data, schema, format_checker=FormatChecker())
 
 
 def _load_json_schema(filename):

@@ -49,7 +49,6 @@ def login():
     found = [user for user in users if user['username'] == login_data['username']]
 
     if not len(found):
-        print(found)
         response = jsonify({'message': 'user does not exists'})
         response.status_code = 400
         return response
@@ -107,7 +106,6 @@ def create_user():
     found = [user for user in users if user['username'] == user_data['username']]
 
     if len(found):
-        print(found)
         response = jsonify({'message': 'user exists'})
         response.status_code = 400
         return response
@@ -132,16 +130,38 @@ def create_user():
 @requires_json
 @requires_login
 def join(game_id):
+
+    # load game state
     game_data = json.loads(db.get(game_id).decode())
 
-    if len(game_data['players']) == 6:
-        response = jsonify({'message': 'maximum amount of players reached'})
+    # cannot join a started game
+    if game_data['started-at']:
+        response = jsonify({'message': 'cannot join started game'})
         response.status_code = 400
         return response
 
-    game_data['players'].append(request.json)
+    # get user id from auth token
+    token = request.headers['Authorization'].split(" ")[1]
+    sessions = json.loads(db.get('sessions').decode())
+    session = [s for s in sessions if s['token'] == token][0]
+    user_id = session['user-id']
 
-    # save game state to database
+    # don't do anything if user is already in the game
+    found_player = [player for player in game_data['players'] if player['id'] == user_id]
+    if len(found_player):
+        return jsonify({'data': game_data})
+
+    # max 6 players allowed
+    if len(game_data['players']) == 6:
+        print(game_data['players'])
+        message = {'message': 'maximum amount of players reached'}
+        print(message)
+        response = jsonify(message)
+        response.status_code = 400
+        return response
+
+    # append user to list of players and save game state to database
+    game_data['players'].append({'id': user_id})
     db.put(game_id,str.encode(json.dumps(game_data)))
 
     return jsonify({'data': game_data})
@@ -182,7 +202,7 @@ def create():
     user_id = session['user-id']
 
     # the creator of the game is the first player added
-    first_player = {'id': session['user-id']}
+    first_player = {'id': user_id}
 
     new_game_id = str(uuid.uuid4())
     new_game = {
@@ -192,8 +212,6 @@ def create():
         'started-at': None,
         'players': [first_player]
     }
-
-    print(new_game)
 
     # save game state to database
     db.put(new_game_id,str.encode(json.dumps(new_game)))

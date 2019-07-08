@@ -60,7 +60,7 @@ def created_game(authenticated_users):
     return {'response': response}
 
 @pytest.fixture
-def started_game(created_game, authenticated_users):
+def started_game(created_game, authenticated_users, join_game):
     game_data = created_game['response'].json()
     users = authenticated_users
     for user in authenticated_users:

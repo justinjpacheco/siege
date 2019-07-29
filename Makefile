@@ -15,3 +15,8 @@ install:
 start-dev:
 
 	FLASK_APP=siege/app.py FLASK_DEBUG=1 venv/bin/flask run
+
+tests:
+
+	source venv/bin/activate
+	pytest tests -sv

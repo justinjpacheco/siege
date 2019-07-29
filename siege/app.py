@@ -147,7 +147,11 @@ def join(game_id):
     user_id = session['user-id']
 
     # don't do anything if user is already in the game
-    found_player = [player for player in game_data['players'] if player['id'] == user_id]
+    found_player = [
+        player for player in game_data['players']
+        if player['id'] == user_id
+    ]
+
     if len(found_player):
         return jsonify({'data': game_data})
 
@@ -205,8 +209,14 @@ def start_game(game_id):
         player['armies']['remaining'] = armies
         game_data['rotation'].append({'player-id': player['id'], 'turn': False})
 
-    # set game round
-    game_data['round'] = 'SETUP-ROUND-1'
+    # activate game round
+    game_round = [
+        gr for gr in game_data['rounds']
+        if gr['id'] == 'claim-territories'
+    ][0]
+
+    game_round['started-at'] = datetime.datetime.now().isoformat()
+    game_round['active'] = True
 
     # save game state to database
     game_data['started-at'] = datetime.datetime.now().isoformat()
@@ -238,13 +248,37 @@ def create():
     new_game_id = str(uuid.uuid4())
     new_game = {
         'id': new_game_id,
-        'created-at': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+        'created-at': datetime
+                        .datetime
+                        .utcnow()
+                        .replace(tzinfo=datetime.timezone.utc)
+                        .isoformat(),
         'created-by': user_id,
         'started-at': None,
         'players': [first_player],
+        'rounds': [
+          {
+            'id': 'claim-territories',
+            'started-at': None,
+            'completed-at': None,
+            'active': None
+          },
+          {
+            'id': 'enforce-claimed-territories',
+            'started-at': None,
+            'completed-at': None,
+            'active': None
+          },
+          {
+            'id': 'game-play',
+            'started-at': None,
+            'completed-at': None,
+            'active': None
+          },
+        ],
         'rotation': [],
         'history': [],
-        'board': []
+        'board': board()
     }
 
     # save game state to database
@@ -252,13 +286,18 @@ def create():
 
     return jsonify({'data': new_game}), 201
 
-# capture territory
-@app.route('/game/<game_id>/capture/<territory_id>', methods=['PUT'])
-def attack():
-  pass
+# claim territory
+@app.route('/game/<game_id>/claim/<territory_id>', methods=['PUT'])
+@requires_login
+def claim(game_id,territory_id):
+    # get creator user id from auth token
+    token = request.headers['Authorization'].split(" ")[1]
+    sessions = json.loads(db.get('sessions').decode())
+    session = [s for s in sessions if s['token'] == token][0]
+    user_id = session['user-id']
 
 # fortify position
-@app.route('/game/<game_id>/territory/<territory_id>/fortify', methods=['PUT'])
+@app.route('/game/<game_id>/fortify/<territory_id>', methods=['PUT'])
 def fortify():
   pass
 
@@ -282,21 +321,21 @@ def board():
             'name': 'alaska',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' ['alberta', 'north-west-territory', 'kamchatka']
+            'adjacent-to': ['alberta', 'north-west-territory', 'kamchatka']
         },
         {
             'id': 'north-west-territory',
             'name': 'north west territory',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' ['alberta', 'alaska', 'ontario', 'greenland']
+            'adjacent-to': ['alberta', 'alaska', 'ontario', 'greenland']
         },
         {
             'id': 'greenland',
             'name': 'greenland',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'north-west-territory',
                 'quebec',
                 'ontario',
@@ -308,7 +347,7 @@ def board():
             'name': 'alberta',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'north-west-territory',
                 'alaska',
                 'ontario',
@@ -320,7 +359,7 @@ def board():
             'name': 'ontario',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'north-west-territory',
                 'alberta',
                 'quebec',
@@ -334,7 +373,7 @@ def board():
             'name': 'quebec',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'ontario',
                 'greenland',
                 'eastern-united-states'
@@ -345,7 +384,7 @@ def board():
             'name': 'western united states',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'alberta',
                 'ontario',
                 'eastern-united-states',
@@ -357,7 +396,7 @@ def board():
             'name': 'western united states',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'quebec',
                 'ontario',
                 'western-united-states',
@@ -369,7 +408,7 @@ def board():
             'name': 'central america',
             'continent': 'north-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'eastern-united-states',
                 'western-united-states',
                 'venezuela'
@@ -380,7 +419,7 @@ def board():
             'name': 'venezuela',
             'continent': 'south-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'central-america',
                 'peru',
                 'brazil'
@@ -391,7 +430,7 @@ def board():
             'name': 'peru',
             'continent': 'south-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'venezuela',
                 'brazil',
                 'argentina',
@@ -402,7 +441,7 @@ def board():
             'name': 'brazil',
             'continent': 'south-america',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'venezuela',
                 'peru',
                 'argentina',
@@ -414,7 +453,7 @@ def board():
             'name': 'north africa',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'brazil',
                 'western-europe',
                 'southern-europe',
@@ -428,7 +467,7 @@ def board():
             'name': 'egypt',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'north-africa',
                 'southern-europe',
                 'middle-east',
@@ -440,7 +479,7 @@ def board():
             'name': 'east africa',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'middle-east',
                 'egypt',
                 'north-africa',
@@ -454,7 +493,7 @@ def board():
             'name': 'congo',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'north-africa',
                 'east-africa',
                 'south-africa',
@@ -465,7 +504,7 @@ def board():
             'name': 'south africa',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'congo',
                 'east-africa',
                 'madagascar',
@@ -476,7 +515,7 @@ def board():
             'name': 'madagascar',
             'continent': 'africa',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'east-africa',
                 'south-africa',
             ]
@@ -486,7 +525,7 @@ def board():
             'name': 'iceland',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'greenland',
                 'great-britain',
                 'scandinavia',
@@ -497,7 +536,7 @@ def board():
             'name': 'scandinavia',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'ukraine',
                 'northern-europe',
                 'iceland',
@@ -509,7 +548,7 @@ def board():
             'name': 'ukraine',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'ural',
                 'afghanistan',
                 'middle-east',
@@ -523,7 +562,7 @@ def board():
             'name': 'northern europe',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'scandinavia',
                 'ukraine',
                 'southern-europe',
@@ -536,7 +575,7 @@ def board():
             'name': 'southern europe',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'middle-east',
                 'egypt',
                 'north-africa',
@@ -550,7 +589,7 @@ def board():
             'name': 'western europe',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'great-britain',
                 'northern-europe',
                 'southern-europe',
@@ -562,7 +601,7 @@ def board():
             'name': 'great britain',
             'continent': 'europe',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'iceland',
                 'scandinavia',
                 'northern-europe',
@@ -574,7 +613,7 @@ def board():
             'name': 'indonesia',
             'continent': 'australia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'siam',
                 'new-guinea',
                 'western-australia',
@@ -585,7 +624,7 @@ def board():
             'name': 'new guinea',
             'continent': 'australia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'indonesia',
                 'new-guinea',
                 'western-australia',
@@ -597,7 +636,7 @@ def board():
             'name': 'western australia',
             'continent': 'australia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'indonesia',
                 'new-guinea',
                 'eastern-australia',
@@ -608,7 +647,7 @@ def board():
             'name': 'eastern australia',
             'continent': 'australia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'new-guinea',
                 'eastern-australia',
                 'western-australia',
@@ -619,7 +658,7 @@ def board():
             'name': 'middle east',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'east-africa',
                 'egypt',
                 'southern-europe',
@@ -633,7 +672,7 @@ def board():
             'name': 'afghanistan',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'middle-east',
                 'ukraine',
                 'ural',
@@ -646,7 +685,7 @@ def board():
             'name': 'ural',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'afghanistan',
                 'ukraine',
                 'siberia',
@@ -658,7 +697,7 @@ def board():
             'name': 'siberia',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'ural',
                 'china',
                 'yakutsk',
@@ -672,7 +711,7 @@ def board():
             'name': 'yakutsk',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'kamchatka',
                 'irkutsk',
                 'siberia',
@@ -683,7 +722,7 @@ def board():
             'name': 'kamchatka',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'yakutsk',
                 'irkutsk',
                 'mongolia',
@@ -695,7 +734,7 @@ def board():
             'name': 'japan',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'kamchatka',
                 'mongolia',
             ]
@@ -705,7 +744,7 @@ def board():
             'name': 'irkutsk',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'siberia',
                 'yakutsk',
                 'kamchatka',
@@ -717,7 +756,7 @@ def board():
             'name': 'mongolia',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'siberia',
                 'irkutsk',
                 'kamchatka',
@@ -730,7 +769,7 @@ def board():
             'name': 'china',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'mongolia',
                 'siberia',
                 'ural',
@@ -744,7 +783,7 @@ def board():
             'name': 'siam',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'china',
                 'india',
                 'indonesia',
@@ -755,7 +794,7 @@ def board():
             'name': 'india',
             'continent': 'asia',
             'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to' [
+            'adjacent-to': [
                 'middle-east',
                 'afghanistan',
                 'china',
@@ -765,3 +804,4 @@ def board():
     ]
 
     return {'continents': continents, 'territories': territories}
+

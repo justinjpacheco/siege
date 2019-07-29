@@ -24,20 +24,22 @@ def users():
             'response': response
         })
 
-    return users
+    return {'users': users}
 
 @pytest.fixture
 def authed_users(users):
     url = base_url.format(path='login')
     authed_users = []
 
-    for user in users:
+    for user in users['users']:
         data = {'username': user['username'], 'password': user['password']}
         response = requests.get(url,data=json.dumps(data),headers=headers)
         user['response'] = response
         authed_users.append(user)
 
-    return authed_users
+    # append result to state object
+    users.update({'authed_users': authed_users})
+    return users
 
 @pytest.fixture
 def create_game(authed_users):
@@ -45,7 +47,7 @@ def create_game(authed_users):
     url = base_url.format(path='game')
 
     # randomly find a user to create the game
-    creator = authed_users[random.randint(0,len(authed_users) - 1)]
+    creator = authed_users['authed_users'][random.randint(0,len(authed_users) - 1)]
 
     # get response from authentication
     creator_response = creator['response'].json()
@@ -57,19 +59,23 @@ def create_game(authed_users):
     auth = {'Authorization': "Bearer {0}".format(creator_token)}
     headers.update(auth)
 
+    # issue request
     response = requests.post(url,headers=headers)
-    return {'response': response}
+
+    # append result to state object
+    authed_users.update({'create_game': response})
+    return authed_users
 
 @pytest.fixture
-def join_game(create_game, authed_users):
+def join_game(create_game):
 
-    game_data = create_game['response'].json()
+    game_data = create_game['create_game'].json()
     game_id = game_data['data']['id']
     path = 'game/{game_id}/join'.format(game_id=game_id)
     url = base_url.format(path=path)
     joined = []
 
-    for user in authed_users:
+    for user in create_game['authed_users']:
 
         # get token from auth response
         auth_data = user['response'].json()
@@ -82,35 +88,81 @@ def join_game(create_game, authed_users):
         response = requests.post(url,headers=headers)
         joined.append({'response': response})
 
-    return joined
+    # append result to state object
+    create_game.update({'join_game': joined})
+    return create_game
 
 @pytest.fixture
-def start_game(authed_users, create_game, join_game):
+def start_game(join_game):
 
     # get game id from game create response
-    game_data = create_game['response'].json()
+    game_data = join_game['create_game'].json()
     game_id = game_data['data']['id']
 
     # use game id in request url
     url = base_url.format(path="game/{0}/start".format(game_id))
 
     # get uuid of user that created the game
-    creator_id = game_data['data']['created-by']
     creator = None
+    creator_id = game_data['data']['created-by']
 
-    for user in authed_users:
+    for user in join_game['authed_users']:
         user_data = user['response'].json()
         if user_data['data']['user-id'] == creator_id:
             creator = user_data
             break;
 
-    auth_token = creator['data']['token']
-
     # update headers with authorization
+    auth_token = creator['data']['token']
     auth = {'Authorization': "Bearer {0}".format(auth_token)}
     headers.update(auth)
 
     response = requests.patch(url,headers=headers)
 
-    return {'response': response}
+    # append result to state object
+    join_game.update({'start_game': response})
+    return join_game
 
+@pytest.fixture
+def claim_territories(start_game):
+
+    # get game id from game create response
+    game_data = start_game['create_game'].json()
+    game_id = game_data['data']['id']
+    claimed = []
+
+    # territory map
+    territories = {}
+    for territory in game_data['data']['board']['territories']:
+        territories[territory['id']] = 0
+
+    remaining = [t for t in territories if territories[t] == 0]
+
+    while len(remaining):
+        for user in start_game['authed_users']:
+
+            user_data = user['response'].json()
+            territory = remaining[random.randint(0,len(remaining) - 1)]
+            territories[territory] = 1
+
+            # use game id in request url
+            path = "game/{0}/claim/{1}".format(game_id,territory)
+            url = base_url.format(path=path)
+
+            # update headers with authorization
+            auth_token = user_data['data']['token']
+            auth = {'Authorization': "Bearer {0}".format(auth_token)}
+            headers.update(auth)
+
+            response = requests.put(url,headers=headers)
+            claimed.append({'response': response})
+
+            # update remaining territories
+            remaining = [t for t in territories if territories[t] == 0]
+
+            if not len(remaining):
+                break
+
+    # append result to state object
+    start_game.update({'claim_territories': claimed})
+    return start_game

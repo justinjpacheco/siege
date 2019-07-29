@@ -149,7 +149,7 @@ def join(game_id):
     # don't do anything if user is already in the game
     found_player = [
         player for player in game_data['players']
-        if player['id'] == user_id
+        if player['user-id'] == user_id
     ]
 
     if len(found_player):
@@ -163,7 +163,7 @@ def join(game_id):
         return response
 
     # append user to list of players and save game state to database
-    game_data['players'].append({'id': user_id, 'armies': {}})
+    game_data['players'].append({'user-id': user_id, 'armies': {}})
     db.put(game_id,str.encode(json.dumps(game_data)))
 
     return jsonify({'data': game_data})
@@ -207,7 +207,9 @@ def start_game(game_id):
     armies = player_count_to_armies[len(game_data['players'])]
     for player in game_data['players']:
         player['armies']['remaining'] = armies
-        game_data['rotation'].append({'player-id': player['id'], 'turn': False})
+        game_data['rotation'].append({'user-id': player['user-id'], 'turn': False})
+
+    print('##################',game_data['players'])
 
     # activate game round
     game_round = [
@@ -240,10 +242,10 @@ def create():
     token = request.headers['Authorization'].split(" ")[1]
     sessions = json.loads(db.get('sessions').decode())
     session = [s for s in sessions if s['token'] == token][0]
-    user_id = session['user-id']
+    creator_user_id = session['user-id']
 
     # the creator of the game is the first player added
-    first_player = {'id': user_id, 'armies': {}}
+    first_player = {'user-id': creator_user_id, 'armies': {}}
 
     new_game_id = str(uuid.uuid4())
     new_game = {
@@ -253,7 +255,7 @@ def create():
                         .utcnow()
                         .replace(tzinfo=datetime.timezone.utc)
                         .isoformat(),
-        'created-by': user_id,
+        'created-by': creator_user_id,
         'started-at': None,
         'players': [first_player],
         'rounds': [
@@ -290,11 +292,27 @@ def create():
 @app.route('/game/<game_id>/claim/<territory_id>', methods=['PUT'])
 @requires_login
 def claim(game_id,territory_id):
-    # get creator user id from auth token
+
+    game_data = json.loads(db.get(game_id).decode())
+
+    # get user id from auth token and session db
     token = request.headers['Authorization'].split(" ")[1]
     sessions = json.loads(db.get('sessions').decode())
     session = [s for s in sessions if s['token'] == token][0]
     user_id = session['user-id']
+
+    # find and claim territory
+    territory = [t for t in game_data['board']['territories'] if t['id'] == territory_id][0]
+    territory['occupied-by'].update({'armies': 1, 'user-id': user_id})
+
+    # remove 1 army from player
+    player = [p for p in game_data['players'] if p['user-id'] == user_id][0]
+    player['armies']['remaining'] -= 1
+
+    # save game state to database
+    db.put(game_id,str.encode(json.dumps(game_data)))
+
+    return jsonify({'data': game_data})
 
 # fortify position
 @app.route('/game/<game_id>/fortify/<territory_id>', methods=['PUT'])

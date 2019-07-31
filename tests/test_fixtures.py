@@ -127,7 +127,7 @@ def start_game(join_game):
 def claim_territories(start_game):
 
     # get game id from game create response
-    game_data = start_game['create_game'].json()
+    game_data = start_game['start_game'].json()
     game_id = game_data['data']['id']
     claimed = []
 
@@ -137,11 +137,23 @@ def claim_territories(start_game):
         territories[territory['id']] = 0
 
     remaining = [t for t in territories if territories[t] == 0]
+    rotation = game_data['data']['rotation']
 
     while len(remaining):
         for user in start_game['authed_users']:
 
             user_data = user['response'].json()
+
+            # find user with active turn
+            active_turn = [
+                r for r in rotation
+                if r['turn'] is True
+            ][0]
+
+            # skip this user if it's not their turn
+            if active_turn['user-id'] != user_data['data']['user-id']:
+                continue
+
             territory = remaining[random.randint(0,len(remaining) - 1)]
             territories[territory] = 1
 
@@ -155,6 +167,11 @@ def claim_territories(start_game):
             headers.update(auth)
 
             response = requests.put(url,headers=headers)
+
+            # update the rotation
+            rotation = response.json()['data']['rotation']
+
+            # append to the list of claimed territories
             claimed.append({'response': response})
 
             # update remaining territories

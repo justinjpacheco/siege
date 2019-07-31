@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import uuid
 import secrets
+import random
 from simplekv.fs import FilesystemStore
 
 app = Flask(__name__)
@@ -209,7 +210,9 @@ def start_game(game_id):
         player['armies']['remaining'] = armies
         game_data['rotation'].append({'user-id': player['user-id'], 'turn': False})
 
-    print('##################',game_data['players'])
+    # choose a random user to start
+    random_user = random.choice(game_data['rotation'])
+    random_user['turn'] = True
 
     # activate game round
     game_round = [
@@ -301,13 +304,61 @@ def claim(game_id,territory_id):
     session = [s for s in sessions if s['token'] == token][0]
     user_id = session['user-id']
 
-    # find and claim territory
-    territory = [t for t in game_data['board']['territories'] if t['id'] == territory_id][0]
+    # check if user is in the game
+    player = [p for p in game_data['players'] if p['user-id'] == user_id]
+    if not len(player):
+        response = jsonify({'message': 'user not in game'})
+        response.status_code = 400
+        return response
+
+    player = player[0]
+
+    # check if this is the players turn
+    rotation = [
+        r for r in game_data['rotation']
+        if r['turn'] is True and r['user-id'] == user_id
+    ]
+    if not len(rotation):
+        response = jsonify({'message': 'incorrect turn order'})
+        response.status_code = 400
+        return response
+
+    # try to locate territory
+    territory = [
+        t for t in game_data['board']['territories']
+        if t['id'] == territory_id
+    ]
+
+    # check if territory exists
+    if not len(territory):
+        response = jsonify({'message': 'territory does not exist'})
+        response.status_code = 400
+        return response
+
+    territory = territory[0]
+
+    # check if territory is unoccupied
+    if territory['occupied-by']['user-id'] is not None:
+        response = jsonify({'message': 'territory is occupied'})
+        response.status_code = 400
+        return response
+
+    # claim territory
     territory['occupied-by'].update({'armies': 1, 'user-id': user_id})
 
     # remove 1 army from player
-    player = [p for p in game_data['players'] if p['user-id'] == user_id][0]
     player['armies']['remaining'] -= 1
+
+    # update the rotation to the next player
+    for i, r in enumerate(game_data['rotation']):
+        if r['turn'] is True:
+            if i == len(game_data['rotation']) - 1:
+                game_data['rotation'][0]['turn'] = True
+            else:
+                game_data['rotation'][i+1]['turn'] = True
+            r['turn'] = False
+            break
+
 
     # save game state to database
     db.put(game_id,str.encode(json.dumps(game_data)))
@@ -464,6 +515,16 @@ def board():
                 'peru',
                 'argentina',
                 'north-africa',
+            ]
+        },
+        {
+            'id': 'argentina',
+            'name': 'argentina',
+            'continent': 'south-america',
+            'occupied-by': {'user-id': None, 'armies': None},
+            'adjacent-to': [
+                'peru',
+                'brazil',
             ]
         },
         {

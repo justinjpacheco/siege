@@ -34,3 +34,8 @@ def test_claim_territories(claim_territories):
         response = territory['response']
         assert response.status_code == 200
         #assert_valid_schema(response.json(),'start-game.json')
+
+def test_deploy_remaining(deploy_remaining):
+    for deploy in deploy_remaining['deploy_remaining']:
+        response = deploy['response']
+        assert response.status_code == 200

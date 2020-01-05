@@ -5,6 +5,7 @@ import hashlib
 import uuid
 import secrets
 import random
+from .board import board
 from simplekv.fs import FilesystemStore
 
 app = Flask(__name__)
@@ -47,7 +48,10 @@ def login():
     login_data = request.get_json()
     users = json.loads(db.get('users').decode())
 
-    found = [user for user in users if user['username'] == login_data['username']]
+    found = [
+        user for user in users
+        if user['username'] == login_data['username']
+    ]
 
     if not len(found):
         response = jsonify({'message': 'user does not exists'})
@@ -104,7 +108,10 @@ def create_user():
     user_data = request.get_json()
     users = json.loads(db.get('users').decode())
 
-    found = [user for user in users if user['username'] == user_data['username']]
+    found = [
+        user for user in users
+        if user['username'] == user_data['username']
+    ]
 
     if len(found):
         response = jsonify({'message': 'user exists'})
@@ -266,19 +273,19 @@ def create():
             'id': 'claim-territories',
             'started-at': None,
             'completed-at': None,
-            'active': None
+            'active': False
           },
           {
             'id': 'enforce-claimed-territories',
             'started-at': None,
             'completed-at': None,
-            'active': None
+            'active': False
           },
           {
-            'id': 'game-play',
+            'id': 'main',
             'started-at': None,
             'completed-at': None,
-            'active': None
+            'active': False
           },
         ],
         'rotation': [],
@@ -313,6 +320,17 @@ def claim(game_id,territory_id):
 
     player = player[0]
 
+    # check current game round is correct
+    current_game_round = [
+        gr for gr in game_data['rounds']
+        if gr['active'] is True
+    ][0]
+
+    if current_game_round['id'] != 'claim-territories':
+        response = jsonify({'message': 'wrong game round'})
+        response.status_code = 400
+        return response
+
     # check if this is the players turn
     rotation = [
         r for r in game_data['rotation']
@@ -324,8 +342,9 @@ def claim(game_id,territory_id):
         return response
 
     # try to locate territory
+    territories = game_data['board']['territories']
     territory = [
-        t for t in game_data['board']['territories']
+        t for t in territories
         if t['id'] == territory_id
     ]
 
@@ -359,528 +378,131 @@ def claim(game_id,territory_id):
             r['turn'] = False
             break
 
+    # check if all territories have been claimed
+    remaining = [t for t in territories if t['occupied-by']['user-id'] is None]
+    if len(remaining) == 0:
+        current_game_round['completed-at'] = datetime.datetime.now().isoformat()
+        current_game_round['active'] = False
+
+        # next game round
+        next_game_round = [
+            gr for gr in game_data['rounds']
+            if gr['id'] == 'enforce-claimed-territories'
+        ][0]
+        next_game_round['started-at'] = datetime.datetime.now().isoformat()
+        next_game_round['active'] = True
 
     # save game state to database
     db.put(game_id,str.encode(json.dumps(game_data)))
 
     return jsonify({'data': game_data})
 
-# fortify position
-@app.route('/game/<game_id>/fortify/<territory_id>', methods=['PUT'])
-def fortify():
-  pass
+# deploy armies to position
+@app.route('/game/<game_id>/deploy/<territory_id>', methods=['PUT'])
+@requires_json
+def deploy(game_id,territory_id):
+    game_data = json.loads(db.get(game_id).decode())
+
+    # get user id from auth token and session db
+    token = request.headers['Authorization'].split(" ")[1]
+    sessions = json.loads(db.get('sessions').decode())
+    session = [s for s in sessions if s['token'] == token][0]
+    user_id = session['user-id']
+
+    # check if user is in the game
+    player = [p for p in game_data['players'] if p['user-id'] == user_id]
+    if not len(player):
+        response = jsonify({'message': 'user not in game'})
+        response.status_code = 400
+        return response
+
+    player = player[0]
+
+    # check current game round is correct
+    current_game_round = [
+        gr for gr in game_data['rounds']
+        if gr['active'] is True
+    ][0]
+
+    if current_game_round['id'] != 'enforce-claimed-territories':
+        response = jsonify({'message': 'wrong game round'})
+        response.status_code = 400
+        return response
+
+    # check if this is the players turn
+    rotation = [
+        r for r in game_data['rotation']
+        if r['turn'] is True and r['user-id'] == user_id
+    ]
+    if not len(rotation):
+        response = jsonify({'message': 'incorrect turn order'})
+        response.status_code = 400
+        return response
+
+    # try to locate territory
+    territories = game_data['board']['territories']
+    territory = [
+        t for t in territories
+        if t['id'] == territory_id
+    ]
+
+    # check if territory exists
+    if not len(territory):
+        response = jsonify({'message': 'territory does not exist'})
+        response.status_code = 400
+        return response
+
+    territory = territory[0]
+
+    # check if territory is occupied by user
+    if territory['occupied-by']['user-id'] != user_id:
+        response = jsonify({'message': 'you do not occupy this territory'})
+        response.status_code = 400
+        return response
+
+    # get request data
+    deploy_data = request.get_json()
+    armies = deploy_data['armies']
+
+    # update territory
+    territory['occupied-by'].update({'armies': armies})
+
+    # remove armies from player
+    player['armies']['remaining'] -= armies
+
+    # update the rotation to the next player
+    for i, r in enumerate(game_data['rotation']):
+        if r['turn'] is True:
+            if i == len(game_data['rotation']) - 1:
+                game_data['rotation'][0]['turn'] = True
+            else:
+                game_data['rotation'][i+1]['turn'] = True
+            r['turn'] = False
+            break
+
+    # check if all remaining armies have been deployed
+    deployments_remaining = [
+        p for p in game_data['players']
+        if p['armies']['remaining'] > 0
+    ]
+    if len(deployments_remaining) == 0:
+        current_game_round['completed-at'] = datetime.datetime.now().isoformat()
+        current_game_round['active'] = False
+
+        # next game round
+        next_game_round = [
+            gr for gr in game_data['rounds']
+            if gr['id'] == 'main'
+        ][0]
+        next_game_round['started-at'] = datetime.datetime.now().isoformat()
+        next_game_round['active'] = True
+
+    # save game state to database
+    db.put(game_id,str.encode(json.dumps(game_data)))
+
+    return jsonify({'data': game_data})
 
 # trade-in cards
 @app.route('/game/<game_id>/cards/trade', methods=['PUT'])
 def trade_in_cards():
   pass
-
-def board():
-    continents = [
-        {'id': 'asia', 'name': 'asia', 'bonus': 7},
-        {'id': 'north-america', 'name': 'north america', 'bonus': 5},
-        {'id': 'europe', 'name': 'europe', 'bonus': 5},
-        {'id': 'africa', 'name': 'africa', 'bonus': 3},
-        {'id': 'australia', 'name': 'australia', 'bonus': 2},
-        {'id': 'south-america', 'name': 'south america', 'bonus': 2},
-    ]
-    territories = [
-        {
-            'id': 'alaska',
-            'name': 'alaska',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': ['alberta', 'north-west-territory', 'kamchatka']
-        },
-        {
-            'id': 'north-west-territory',
-            'name': 'north west territory',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': ['alberta', 'alaska', 'ontario', 'greenland']
-        },
-        {
-            'id': 'greenland',
-            'name': 'greenland',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'north-west-territory',
-                'quebec',
-                'ontario',
-                'iceland'
-            ]
-        },
-        {
-            'id': 'alberta',
-            'name': 'alberta',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'north-west-territory',
-                'alaska',
-                'ontario',
-                'western-united-states'
-            ]
-        },
-        {
-            'id': 'ontario',
-            'name': 'ontario',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'north-west-territory',
-                'alberta',
-                'quebec',
-                'greenland',
-                'western-united-states',
-                'eastern-united-states'
-            ]
-        },
-        {
-            'id': 'quebec',
-            'name': 'quebec',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'ontario',
-                'greenland',
-                'eastern-united-states'
-            ]
-        },
-        {
-            'id': 'western-united-states',
-            'name': 'western united states',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'alberta',
-                'ontario',
-                'eastern-united-states',
-                'central-america'
-            ]
-        },
-        {
-            'id': 'eastern-united-states',
-            'name': 'western united states',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'quebec',
-                'ontario',
-                'western-united-states',
-                'central-america'
-            ]
-        },
-        {
-            'id': 'central-america',
-            'name': 'central america',
-            'continent': 'north-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'eastern-united-states',
-                'western-united-states',
-                'venezuela'
-            ]
-        },
-        {
-            'id': 'venezuela',
-            'name': 'venezuela',
-            'continent': 'south-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'central-america',
-                'peru',
-                'brazil'
-            ]
-        },
-        {
-            'id': 'peru',
-            'name': 'peru',
-            'continent': 'south-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'venezuela',
-                'brazil',
-                'argentina',
-            ]
-        },
-        {
-            'id': 'brazil',
-            'name': 'brazil',
-            'continent': 'south-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'venezuela',
-                'peru',
-                'argentina',
-                'north-africa',
-            ]
-        },
-        {
-            'id': 'argentina',
-            'name': 'argentina',
-            'continent': 'south-america',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'peru',
-                'brazil',
-            ]
-        },
-        {
-            'id': 'north-africa',
-            'name': 'north africa',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'brazil',
-                'western-europe',
-                'southern-europe',
-                'egypt',
-                'east-africa',
-                'congo',
-            ]
-        },
-        {
-            'id': 'egypt',
-            'name': 'egypt',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'north-africa',
-                'southern-europe',
-                'middle-east',
-                'east-africa',
-            ]
-        },
-        {
-            'id': 'east-africa',
-            'name': 'east africa',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'middle-east',
-                'egypt',
-                'north-africa',
-                'congo',
-                'south-africa',
-                'madagascar',
-            ]
-        },
-        {
-            'id': 'congo',
-            'name': 'congo',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'north-africa',
-                'east-africa',
-                'south-africa',
-            ]
-        },
-        {
-            'id': 'south-africa',
-            'name': 'south africa',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'congo',
-                'east-africa',
-                'madagascar',
-            ]
-        },
-        {
-            'id': 'madagascar',
-            'name': 'madagascar',
-            'continent': 'africa',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'east-africa',
-                'south-africa',
-            ]
-        },
-        {
-            'id': 'iceland',
-            'name': 'iceland',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'greenland',
-                'great-britain',
-                'scandinavia',
-            ]
-        },
-        {
-            'id': 'scandinavia',
-            'name': 'scandinavia',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'ukraine',
-                'northern-europe',
-                'iceland',
-                'great-britain',
-            ]
-        },
-        {
-            'id': 'ukraine',
-            'name': 'ukraine',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'ural',
-                'afghanistan',
-                'middle-east',
-                'southern-europe',
-                'northern-europe',
-                'scandinavia',
-            ]
-        },
-        {
-            'id': 'northern-europe',
-            'name': 'northern europe',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'scandinavia',
-                'ukraine',
-                'southern-europe',
-                'western-europe',
-                'great-britain',
-            ]
-        },
-        {
-            'id': 'southern-europe',
-            'name': 'southern europe',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'middle-east',
-                'egypt',
-                'north-africa',
-                'western-europe',
-                'northern-europe',
-                'ukraine',
-            ]
-        },
-        {
-            'id': 'western-europe',
-            'name': 'western europe',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'great-britain',
-                'northern-europe',
-                'southern-europe',
-                'north-africa',
-            ]
-        },
-        {
-            'id': 'great-britain',
-            'name': 'great britain',
-            'continent': 'europe',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'iceland',
-                'scandinavia',
-                'northern-europe',
-                'western-europe',
-            ]
-        },
-        {
-            'id': 'indonesia',
-            'name': 'indonesia',
-            'continent': 'australia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'siam',
-                'new-guinea',
-                'western-australia',
-            ]
-        },
-        {
-            'id': 'new-guinea',
-            'name': 'new guinea',
-            'continent': 'australia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'indonesia',
-                'new-guinea',
-                'western-australia',
-                'eastern-australia',
-            ]
-        },
-        {
-            'id': 'western-australia',
-            'name': 'western australia',
-            'continent': 'australia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'indonesia',
-                'new-guinea',
-                'eastern-australia',
-            ]
-        },
-        {
-            'id': 'eastern-australia',
-            'name': 'eastern australia',
-            'continent': 'australia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'new-guinea',
-                'eastern-australia',
-                'western-australia',
-            ]
-        },
-        {
-            'id': 'middle-east',
-            'name': 'middle east',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'east-africa',
-                'egypt',
-                'southern-europe',
-                'ukraine',
-                'afghanistan',
-                'india',
-            ]
-        },
-        {
-            'id': 'afghanistan',
-            'name': 'afghanistan',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'middle-east',
-                'ukraine',
-                'ural',
-                'china',
-                'india',
-            ]
-        },
-        {
-            'id': 'ural',
-            'name': 'ural',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'afghanistan',
-                'ukraine',
-                'siberia',
-                'china',
-            ]
-        },
-        {
-            'id': 'siberia',
-            'name': 'siberia',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'ural',
-                'china',
-                'yakutsk',
-                'irkutsk',
-                'mongolia',
-                'china',
-            ]
-        },
-        {
-            'id': 'yakutsk',
-            'name': 'yakutsk',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'kamchatka',
-                'irkutsk',
-                'siberia',
-            ]
-        },
-        {
-            'id': 'kamchatka',
-            'name': 'kamchatka',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'yakutsk',
-                'irkutsk',
-                'mongolia',
-                'japan',
-            ]
-        },
-        {
-            'id': 'japan',
-            'name': 'japan',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'kamchatka',
-                'mongolia',
-            ]
-        },
-        {
-            'id': 'irkutsk',
-            'name': 'irkutsk',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'siberia',
-                'yakutsk',
-                'kamchatka',
-                'mongolia',
-            ]
-        },
-        {
-            'id': 'mongolia',
-            'name': 'mongolia',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'siberia',
-                'irkutsk',
-                'kamchatka',
-                'japan',
-                'china',
-            ]
-        },
-        {
-            'id': 'china',
-            'name': 'china',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'mongolia',
-                'siberia',
-                'ural',
-                'afghanistan',
-                'india',
-                'siam',
-            ]
-        },
-        {
-            'id': 'siam',
-            'name': 'siam',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'china',
-                'india',
-                'indonesia',
-            ]
-        },
-        {
-            'id': 'india',
-            'name': 'india',
-            'continent': 'asia',
-            'occupied-by': {'user-id': None, 'armies': None},
-            'adjacent-to': [
-                'middle-east',
-                'afghanistan',
-                'china',
-                'siam',
-            ]
-        },
-    ]
-
-    return {'continents': continents, 'territories': territories}
-
